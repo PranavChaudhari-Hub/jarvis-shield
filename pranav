@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JARVIS Shield — Smart Mining Helmet</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- ✅ ONLY ONE Firebase SDK — v9 compat mode -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+:root{
+  --or:#FF6B00;--og:rgba(255,107,0,0.18);
+  --bg:#090909;--card:#111;--card2:#161616;
+  --bd:rgba(255,107,0,0.18);--tx:#e2e2e2;--mt:#555;
+  --gr:#00ff88;--ye:#ffd600;--wa:#ff8800;--re:#ff2244;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--tx);font-family:'Rajdhani',sans-serif;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.06) 2px,rgba(0,0,0,0.06) 4px);pointer-events:none;z-index:999;}
+body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(255,107,0,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,107,0,0.03) 1px,transparent 1px);background-size:44px 44px;pointer-events:none;z-index:0;}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:100;background:rgba(9,9,9,0.97);backdrop-filter:blur(14px);border-bottom:1px solid var(--bd);padding:0 18px;display:flex;align-items:center;justify-content:space-between;height:56px;}
+.logo{display:flex;align-items:center;gap:10px;}
+.lbox{width:32px;height:32px;border:2px solid var(--or);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif;font-size:11px;font-weight:900;color:var(--or);animation:lg 2.5s ease-in-out infinite;}
+@keyframes lg{0%,100%{box-shadow:0 0 10px var(--og);}50%{box-shadow:0 0 22px rgba(255,107,0,0.45);}}
+.lname{font-family:'Orbitron',sans-serif;font-size:14px;font-weight:700;letter-spacing:3px;color:#fff;}
+.lname span{color:var(--or);}
+.navlinks{display:flex;gap:2px;}
+.nb{background:none;border:1px solid transparent;color:var(--mt);font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:600;letter-spacing:2px;padding:6px 13px;cursor:pointer;transition:all 0.2s;text-transform:uppercase;border-radius:3px;}
+.nb:hover,.nb.on{color:var(--or);border-color:var(--bd);background:var(--og);}
+.nstat{display:flex;align-items:center;gap:7px;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--mt);}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--gr);box-shadow:0 0 7px var(--gr);animation:bk 1.6s infinite;}
+@keyframes bk{0%,100%{opacity:1;}50%{opacity:0.2};}
+
+/* PAGES */
+.page{display:none;position:relative;z-index:1;padding-bottom:65px;}
+.page.on{display:block;}
+.wrap{max-width:1060px;margin:0 auto;padding:20px 16px;}
+
+/* HEADERS */
+.ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;padding-bottom:13px;border-bottom:1px solid var(--bd);}
+.ph h1{font-family:'Orbitron',sans-serif;font-size:17px;font-weight:700;letter-spacing:3px;color:#fff;}
+.ph h1 span{color:var(--or);}
+.ts{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--mt);}
+
+/* CARDS */
+.c{background:var(--card);border:1px solid var(--bd);border-radius:8px;}
+.ct{font-size:10px;letter-spacing:3px;color:var(--mt);text-transform:uppercase;margin-bottom:13px;}
+.cstripe::before{content:'';display:block;height:2px;border-radius:8px 8px 0 0;background:linear-gradient(90deg,transparent,var(--or),transparent);}
+
+/* THREAT INDEX */
+.ti-card{padding:26px 18px;text-align:center;margin-bottom:14px;}
+.ti-num{font-family:'Orbitron',sans-serif;font-size:88px;font-weight:900;line-height:1;color:var(--or);text-shadow:0 0 36px rgba(255,107,0,0.55);transition:color 0.6s,text-shadow 0.6s;}
+.ti-badge{display:inline-block;margin-top:11px;font-family:'Orbitron',sans-serif;font-size:14px;font-weight:700;letter-spacing:4px;padding:7px 20px;border-radius:4px;transition:all 0.5s;}
+.bar-w{max-width:360px;margin:16px auto 0;height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;}
+.bar-f{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--gr),var(--ye),var(--wa),var(--re));transition:width 1.2s ease;}
+
+/* SENSOR ROW */
+.srow{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px;}
+@media(max-width:540px){.srow{grid-template-columns:1fr;}}
+.sc{padding:18px 16px;position:relative;overflow:hidden;transition:border-color 0.4s;}
+.sc.swarn{border-color:var(--ye);}
+.sc.salert{border-color:var(--re);}
+.sn{font-size:10px;letter-spacing:3px;color:var(--mt);text-transform:uppercase;margin-bottom:5px;}
+.sv{font-family:'Orbitron',sans-serif;font-size:32px;font-weight:700;color:#fff;line-height:1;}
+.su{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--mt);margin-top:3px;}
+.sg{font-size:11px;color:var(--mt);margin-top:7px;letter-spacing:1px;}
+.si{position:absolute;top:13px;right:13px;width:9px;height:9px;border-radius:50%;background:var(--gr);transition:all 0.3s;}
+.si.w{background:var(--ye);box-shadow:0 0 8px var(--ye);}
+.si.a{background:var(--re);box-shadow:0 0 10px var(--re);animation:bk 0.5s infinite;}
+
+/* BOTTOM ROW */
+.brow{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media(max-width:520px){.brow{grid-template-columns:1fr;}}
+.mp{padding:17px;}
+.asi{display:flex;align-items:center;gap:13px;}
+.aico{font-size:34px;}
+.albl{font-family:'Orbitron',sans-serif;font-size:14px;font-weight:700;color:var(--gr);}
+.asub{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--mt);margin-top:3px;}
+.llist{display:flex;flex-direction:column;gap:5px;}
+.li{display:flex;align-items:center;justify-content:space-between;padding:6px 9px;border-radius:3px;font-size:12px;font-family:'Share Tech Mono',monospace;border:1px solid transparent;}
+.li.cur{border-color:var(--or);background:rgba(255,107,0,0.1);}
+.ld{width:6px;height:6px;border-radius:50%;margin-right:7px;flex-shrink:0;}
+.lr{color:var(--mt);}
+
+/* PAGE 2 */
+.sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px;}
+.stc{padding:18px;text-align:center;}
+.stn{font-family:'Orbitron',sans-serif;font-size:36px;font-weight:700;color:var(--or);}
+.stl{font-size:10px;letter-spacing:2px;color:var(--mt);text-transform:uppercase;margin-top:3px;}
+.chp{padding:18px;margin-bottom:14px;}
+.tp{padding:18px;}
+table{width:100%;border-collapse:collapse;font-family:'Share Tech Mono',monospace;font-size:12px;}
+th{text-align:left;padding:8px 11px;font-size:10px;letter-spacing:2px;color:var(--mt);text-transform:uppercase;border-bottom:1px solid var(--bd);}
+td{padding:10px 11px;border-bottom:1px solid rgba(255,255,255,0.04);vertical-align:middle;}
+tr:hover td{background:rgba(255,107,0,0.04);}
+.badge{padding:3px 8px;border-radius:3px;font-size:10px;letter-spacing:1px;font-weight:700;text-transform:uppercase;}
+.bs{background:rgba(0,255,136,0.12);color:var(--gr);border:1px solid rgba(0,255,136,0.25);}
+.bc{background:rgba(255,214,0,0.12);color:var(--ye);border:1px solid rgba(255,214,0,0.25);}
+.bw{background:rgba(255,136,0,0.12);color:var(--wa);border:1px solid rgba(255,136,0,0.25);}
+.bd2{background:rgba(255,34,68,0.12);color:var(--re);border:1px solid rgba(255,34,68,0.25);}
+
+/* PAGE 3 */
+.hero{padding:40px 20px;text-align:center;margin-bottom:14px;position:relative;overflow:hidden;}
+.hero::before{content:'';position:absolute;top:-80px;left:50%;transform:translateX(-50%);width:260px;height:260px;background:radial-gradient(circle,rgba(255,107,0,0.09) 0%,transparent 70%);pointer-events:none;}
+.ht{font-family:'Orbitron',sans-serif;font-size:34px;font-weight:900;letter-spacing:5px;color:#fff;margin-bottom:6px;}
+.ht span{color:var(--or);}
+.hs{color:var(--mt);letter-spacing:2px;font-size:13px;margin-bottom:16px;}
+.htag{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--or);border:1px solid var(--bd);display:inline-block;padding:6px 16px;border-radius:3px;letter-spacing:2px;}
+.flow{padding:20px;margin-bottom:14px;}
+.fsteps{display:flex;align-items:center;justify-content:space-around;flex-wrap:wrap;gap:8px;margin-top:13px;}
+.fs{text-align:center;flex:1;min-width:60px;}
+.fi{font-size:24px;margin-bottom:4px;}
+.fn{font-size:9px;letter-spacing:2px;color:var(--mt);text-transform:uppercase;}
+.fa{color:var(--or);font-size:16px;flex-shrink:0;}
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+@media(max-width:540px){.twocol{grid-template-columns:1fr;}}
+.cc{padding:18px;}
+.cct{font-family:'Orbitron',sans-serif;font-size:11px;font-weight:700;color:var(--or);letter-spacing:2px;margin-bottom:13px;}
+ul.cl{list-style:none;}
+ul.cl li{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:13px;}
+ul.cl li:last-child{border:none;}
+.cd{width:5px;height:5px;border-radius:50%;background:var(--or);flex-shrink:0;}
+.cp{margin-left:auto;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--mt);}
+.tot{margin-top:13px;padding:10px;border-radius:5px;text-align:center;background:rgba(255,107,0,0.08);border:1px solid rgba(255,107,0,0.35);font-family:'Orbitron',sans-serif;font-size:12px;color:var(--or);letter-spacing:2px;}
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:13px;}
+.pi{background:var(--card2);border:1px solid var(--bd);border-radius:4px;padding:9px 11px;display:flex;align-items:center;gap:9px;}
+.pn{font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;color:var(--or);min-width:30px;}
+.pd{font-size:11px;color:var(--mt);}
+.formula{padding:20px;margin-bottom:14px;}
+.fml{font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--tx);line-height:2.2;padding-top:4px;}
+
+/* FLOATING ALERT */
+.falert{position:fixed;top:65px;right:13px;z-index:200;background:rgba(255,34,68,0.94);border:1px solid var(--re);border-radius:7px;padding:11px 16px;font-family:'Orbitron',sans-serif;font-size:11px;letter-spacing:2px;color:#fff;box-shadow:0 0 26px rgba(255,34,68,0.45);display:none;animation:si 0.3s ease;}
+@keyframes si{from{transform:translateX(120%);opacity:0;}to{transform:translateX(0);opacity:1;}}
+
+/* DEMO BAR */
+.dbar{position:fixed;bottom:0;left:0;right:0;z-index:100;background:rgba(9,9,9,0.97);border-top:1px solid var(--bd);padding:8px 14px;display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+.dl{font-size:9px;letter-spacing:2px;color:var(--mt);text-transform:uppercase;}
+.db{background:none;border:1px solid var(--bd);color:var(--tx);font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:600;letter-spacing:1px;padding:5px 11px;border-radius:3px;cursor:pointer;transition:all 0.2s;text-transform:uppercase;}
+.db:hover{background:var(--og);border-color:var(--or);color:var(--or);}
+.db.r{border-color:rgba(255,34,68,0.3);color:var(--re);}
+.db.r:hover{background:rgba(255,34,68,0.1);}
+.fbn{margin-left:auto;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--mt);}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">
+    <div class="lbox">JS</div>
+    <div class="lname">JARVIS <span>SHIELD</span></div>
+  </div>
+  <div class="navlinks">
+    <button class="nb on" onclick="goto('live',this)">⬡ Live</button>
+    <button class="nb" onclick="goto('alerts',this)">⬡ Alerts</button>
+    <button class="nb" onclick="goto('system',this)">⬡ System</button>
+  </div>
+  <div class="nstat">
+    <div class="dot" id="cDot"></div>
+    <span id="cLbl">CONNECTING</span>
+  </div>
+</nav>
+
+<div class="falert" id="fAlert"></div>
+
+<!-- PAGE 1 — LIVE -->
+<div class="page on" id="page-live">
+<div class="wrap">
+  <div class="ph">
+    <h1>LIVE <span>MONITOR</span></h1>
+    <span class="ts" id="clk1">--:--:--</span>
+  </div>
+  <div class="c cstripe ti-card">
+    <div class="ct">◈ THREAT INDEX</div>
+    <div class="ti-num" id="tiN">--</div>
+    <div class="ti-badge" id="tiB">INITIALIZING</div>
+    <div class="bar-w"><div class="bar-f" id="tiBar" style="width:0%"></div></div>
+  </div>
+  <div class="srow">
+    <div class="c sc" id="cmq2">
+      <div class="si" id="imq2"></div>
+      <div class="sn">MQ-2</div>
+      <div class="sv" id="vmq2">--</div>
+      <div class="su">analog (0–1023)</div>
+      <div class="sg">🔥 Smoke · LPG · Butane</div>
+    </div>
+    <div class="c sc" id="cmq3">
+      <div class="si" id="imq3"></div>
+      <div class="sn">MQ-3</div>
+      <div class="sv" id="vmq3">--</div>
+      <div class="su">analog (0–1023)</div>
+      <div class="sg">🍺 Alcohol · Ethanol</div>
+    </div>
+    <div class="c sc" id="cmq135">
+      <div class="si" id="imq135"></div>
+      <div class="sn">MQ-135</div>
+      <div class="sv" id="vmq135">--</div>
+      <div class="su">analog (0–1023)</div>
+      <div class="sg">💨 CO₂ · NH₃ · Benzene</div>
+    </div>
+  </div>
+  <div class="brow">
+    <div class="c mp">
+      <div class="ct">◈ Alert Status</div>
+      <div class="asi">
+        <div class="aico" id="aIco">🟢</div>
+        <div>
+          <div class="albl" id="aLbl">ALL CLEAR</div>
+          <div class="asub" id="aSub">All sensors in safe range</div>
+        </div>
+      </div>
+    </div>
+    <div class="c mp">
+      <div class="ct">◈ Danger Scale</div>
+      <div class="llist">
+        <div class="li" id="l0"><div style="display:flex;align-items:center"><div class="ld" style="background:var(--gr)"></div>L0 — SAFE</div><span class="lr">0–25</span></div>
+        <div class="li" id="l1"><div style="display:flex;align-items:center"><div class="ld" style="background:var(--ye)"></div>L1 — CAUTION</div><span class="lr">26–50</span></div>
+        <div class="li" id="l2"><div style="display:flex;align-items:center"><div class="ld" style="background:var(--wa)"></div>L2 — WARNING</div><span class="lr">51–75</span></div>
+        <div class="li" id="l3"><div style="display:flex;align-items:center"><div class="ld" style="background:var(--re)"></div>L3 — DANGER</div><span class="lr">76–100</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- PAGE 2 — ALERTS -->
+<div class="page" id="page-alerts">
+<div class="wrap">
+  <div class="ph">
+    <h1>ALERT <span>LOG</span></h1>
+    <span class="ts" id="clk2">--:--:--</span>
+  </div>
+  <div class="sgrid">
+    <div class="c stc"><div class="stn" id="stT">0</div><div class="stl">Total Events</div></div>
+    <div class="c stc"><div class="stn" style="color:var(--re)" id="stD">0</div><div class="stl">Danger</div></div>
+    <div class="c stc"><div class="stn" style="color:var(--gr)" id="stS">0</div><div class="stl">Safe</div></div>
+  </div>
+  <div class="c chp">
+    <div class="ct">◈ Sensor History — Last 20 Readings</div>
+    <canvas id="chart" height="110"></canvas>
+  </div>
+  <div class="c tp">
+    <div class="ct">◈ Event Log</div>
+    <table>
+      <thead><tr><th>Time</th><th>MQ-2</th><th>MQ-3</th><th>MQ-135</th><th>TI</th><th>Level</th></tr></thead>
+      <tbody id="tbl"><tr><td colspan="6" style="color:var(--mt);text-align:center;padding:20px">Waiting for live data...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- PAGE 3 — SYSTEM -->
+<div class="page" id="page-system">
+<div class="wrap">
+  <div class="ph"><h1>SYSTEM <span>INFO</span></h1></div>
+  <div class="c hero">
+    <div class="ht">JARVIS <span>SHIELD</span></div>
+    <div class="hs">Smart Gas Detection Helmet · Prototype v1.0</div>
+    <div class="htag">⚡ 3-SENSOR FUSION · CLOUD DASHBOARD · REAL-TIME ALERTS</div>
+  </div>
+  <div class="c flow">
+    <div class="ct">◈ Data Flow Architecture</div>
+    <div class="fsteps">
+      <div class="fs"><div class="fi">🔬</div><div class="fn">MQ Sensors</div></div>
+      <div class="fa">→</div>
+      <div class="fs"><div class="fi">🧠</div><div class="fn">ESP8266</div></div>
+      <div class="fa">→</div>
+      <div class="fs"><div class="fi">☁️</div><div class="fn">Firebase</div></div>
+      <div class="fa">→</div>
+      <div class="fs"><div class="fi">🌐</div><div class="fn">Dashboard</div></div>
+      <div class="fa">→</div>
+      <div class="fs"><div class="fi">🚨</div><div class="fn">Alert</div></div>
+    </div>
+  </div>
+  <div class="twocol">
+    <div class="c cc">
+      <div class="cct">◈ Hardware Used</div>
+      <ul class="cl">
+        <li><div class="cd"></div>ESP8266 NodeMCU<span class="cp">₹200</span></li>
+        <li><div class="cd"></div>MQ-2 (Smoke/LPG)<span class="cp">₹80</span></li>
+        <li><div class="cd"></div>MQ-3 (Alcohol)<span class="cp">₹80</span></li>
+        <li><div class="cd"></div>MQ-135 (Air Quality)<span class="cp">₹80</span></li>
+        <li><div class="cd"></div>Buzzer + LEDs<span class="cp">₹30</span></li>
+        <li><div class="cd"></div>Hard Hat<span class="cp">₹150</span></li>
+        <li><div class="cd"></div>Wires + Board<span class="cp">₹50</span></li>
+      </ul>
+      <div class="tot">TOTAL COST ≈ ₹670</div>
+    </div>
+    <div class="c cc">
+      <div class="cct">◈ Wiring Guide (ESP8266)</div>
+      <div class="pgrid">
+        <div class="pi"><div class="pn">A0</div><div class="pd">MQ-2 AOUT</div></div>
+        <div class="pi"><div class="pn">D1</div><div class="pd">MQ-3 AOUT</div></div>
+        <div class="pi"><div class="pn">D2</div><div class="pd">MQ-135 AOUT</div></div>
+        <div class="pi"><div class="pn">D5</div><div class="pd">Buzzer</div></div>
+        <div class="pi"><div class="pn">D6</div><div class="pd">Red LED</div></div>
+        <div class="pi"><div class="pn">D7</div><div class="pd">Green LED</div></div>
+        <div class="pi"><div class="pn">3V3</div><div class="pd">VCC all sensors</div></div>
+        <div class="pi"><div class="pn">GND</div><div class="pd">GND all</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="c formula">
+    <div class="ct">◈ Threat Index Algorithm</div>
+    <div class="fml">
+      <span style="color:var(--or)">ThreatIndex</span> = (MQ2 × 0.40) + (MQ3 × 0.25) + (MQ135 × 0.35)<br>
+      <span style="color:var(--mt)">Normalized: raw value ÷ 10.23 → gives 0 to 100</span><br><br>
+      <span style="color:var(--gr)">0–25</span> → SAFE &nbsp;&nbsp;
+      <span style="color:var(--ye)">26–50</span> → CAUTION &nbsp;&nbsp;
+      <span style="color:var(--wa)">51–75</span> → WARNING &nbsp;&nbsp;
+      <span style="color:var(--re)">76–100</span> → DANGER
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- DEMO BAR -->
+<div class="dbar">
+  <span class="dl">Simulate:</span>
+  <button class="db" onclick="sim(0)">✅ Safe</button>
+  <button class="db" onclick="sim(1)">🟡 Caution</button>
+  <button class="db" onclick="sim(2)">🟠 Warning</button>
+  <button class="db r" onclick="sim(3)">🔴 Danger</button>
+  <button class="db" onclick="sim(Math.floor(Math.random()*4))">🎲 Random</button>
+  <span class="fbn" id="fbN">⬡ Connecting to Firebase...</span>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     ✅ SINGLE CLEAN SCRIPT — NO DUPLICATES
+     Firebase SDK v9 compat already loaded in <head>
+════════════════════════════════════════════════════════ -->
+<script>
+// ── YOUR REAL FIREBASE CONFIG ──
+const firebaseConfig = {
+  apiKey:            "AIzaSyCY339_JTDvkfRHadZRxtW0H2g6eW_CPEE",
+  authDomain:        "jarvis-shield-7136a.firebaseapp.com",
+  databaseURL:       "https://jarvis-shield-7136a-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:         "jarvis-shield-7136a",
+  storageBucket:     "jarvis-shield-7136a.firebasestorage.app",
+  messagingSenderId: "68476210174",
+  appId:             "1:68476210174:web:8df7665bc0ee9d08bf4eaf"
+};
+
+// ── STATE ──
+let logData=[], cL=[], cA=[], cB=[], cC=[], chart;
+
+// ── INIT ──
+window.onload = () => {
+  buildChart();
+  setInterval(tick, 1000);
+  tick();
+
+  // Initialize Firebase ONCE
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  // Listen to helmet1 path in realtime
+  db.ref("helmet1").on("value", function(snapshot) {
+    const data = snapshot.val();
+    if (!data) {
+      // No data yet — show demo
+      document.getElementById('fbN').textContent = '⚠ No data at helmet1 yet — using demo';
+      sim(0);
+      return;
+    }
+    // Real data arrived — render it
+    render(data);
+    document.getElementById('fbN').textContent = '🔥 FIREBASE LIVE';
+  }, function(error) {
+    // Firebase error — fall back to demo
+    console.error("Firebase error:", error);
+    document.getElementById('fbN').textContent = '❌ Firebase error — check console';
+    online(false);
+    sim(0);
+  });
+};
+
+// ── NAVIGATION ──
+function goto(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+  document.querySelectorAll('.nb').forEach(b => b.classList.remove('on'));
+  document.getElementById('page-' + id).classList.add('on');
+  btn.classList.add('on');
+}
+
+// ── CLOCK ──
+function tick() {
+  const t = new Date().toLocaleTimeString('en-IN', {hour12:false});
+  ['clk1','clk2'].forEach(id => { const e=document.getElementById(id); if(e) e.textContent=t; });
+}
+
+// ── CONNECTION STATUS ──
+function online(on) {
+  const d = document.getElementById('cDot');
+  const l = document.getElementById('cLbl');
+  d.style.background = on ? 'var(--gr)' : 'var(--re)';
+  d.style.boxShadow  = on ? '0 0 7px var(--gr)' : '0 0 7px var(--re)';
+  l.textContent      = on ? 'CONNECTED' : 'OFFLINE';
+}
+
+// ── MAIN RENDER — called with real Firebase data ──
+function render(d) {
+  const mq2   = +d.mq2   || 0;
+  const mq3   = +d.mq3   || 0;
+  const mq135 = +d.mq135 || 0;
+
+  // Threat Index
+  const raw = (mq2 * 0.40) + (mq3 * 0.25) + (mq135 * 0.35);
+  const ti  = Math.min(100, Math.round(raw / 10.23));
+
+  // Update sensor value displays
+  txt('vmq2',   mq2);
+  txt('vmq3',   mq3);
+  txt('vmq135', mq135);
+
+  // Sensor dot indicators
+  setInd('imq2',   mq2,   400, 700);
+  setInd('imq3',   mq3,   300, 600);
+  setInd('imq135', mq135, 400, 700);
+
+  // Threat index number + bar
+  txt('tiN', ti);
+  document.getElementById('tiBar').style.width = ti + '%';
+
+  // Level colors
+  let lv, co, bg, br;
+  if      (ti <= 25) { lv='SAFE';    co='var(--gr)'; bg='rgba(0,255,136,0.08)'; br='rgba(0,255,136,0.3)'; }
+  else if (ti <= 50) { lv='CAUTION'; co='var(--ye)'; bg='rgba(255,214,0,0.08)'; br='rgba(255,214,0,0.3)'; }
+  else if (ti <= 75) { lv='WARNING'; co='var(--wa)'; bg='rgba(255,136,0,0.08)'; br='rgba(255,136,0,0.3)'; }
+  else               { lv='DANGER';  co='var(--re)'; bg='rgba(255,34,68,0.08)';  br='rgba(255,34,68,0.3)'; }
+
+  // Badge + number color
+  const badge = document.getElementById('tiB');
+  const num   = document.getElementById('tiN');
+  badge.textContent = '◉ LEVEL ' + ['SAFE','CAUTION','WARNING','DANGER'].indexOf(lv) + ' — ' + lv;
+  badge.style.cssText = `color:${co};background:${bg};border:1px solid ${br};`;
+  num.style.color = co;
+  num.style.textShadow = `0 0 36px ${co}`;
+
+  // Highlight active level row
+  ['l0','l1','l2','l3'].forEach(id => document.getElementById(id).classList.remove('cur'));
+  document.getElementById('l' + ['SAFE','CAUTION','WARNING','DANGER'].indexOf(lv)).classList.add('cur');
+
+  // Alert status box
+  const msgs = {
+    SAFE:    ['🟢', 'ALL CLEAR',  'All sensors in safe range'],
+    CAUTION: ['🟡', 'CAUTION',    'Elevated levels — monitor closely'],
+    WARNING: ['🟠', 'WARNING!',   'High gas — prepare to evacuate'],
+    DANGER:  ['🔴', 'DANGER!',    'Critical — evacuate immediately!'],
+  };
+  const [ic, lb, sb] = msgs[lv];
+  txt('aIco', ic);
+  const al = document.getElementById('aLbl');
+  al.textContent = lb;
+  al.style.color = co;
+  txt('aSub', sb);
+
+  // Floating banner for danger
+  if (ti > 75) showBanner('⚠ DANGER — CRITICAL GAS LEVEL');
+
+  // Log + chart
+  addLog(mq2, mq3, mq135, ti, lv);
+  addPoint(mq2, mq3, mq135);
+  online(true);
+}
+
+// ── HELPERS ──
+function txt(id, v) { const e=document.getElementById(id); if(e) e.textContent=v; }
+
+function setInd(id, v, wt, at) {
+  const e = document.getElementById(id); if(!e) return;
+  e.className = 'si' + (v >= at ? ' a' : v >= wt ? ' w' : '');
+}
+
+// ── ALERT LOG ──
+function addLog(mq2, mq3, mq135, ti, lv) {
+  const t = new Date().toLocaleTimeString('en-IN', {hour12:false});
+  logData.unshift({t, mq2, mq3, mq135, ti, lv});
+  if (logData.length > 50) logData.pop();
+
+  txt('stT', logData.length);
+  txt('stD', logData.filter(e => e.lv==='DANGER').length);
+  txt('stS', logData.filter(e => e.lv==='SAFE').length);
+
+  const bm = {SAFE:'bs', CAUTION:'bc', WARNING:'bw', DANGER:'bd2'};
+  document.getElementById('tbl').innerHTML = logData.slice(0,15).map(e => `
+    <tr>
+      <td>${e.t}</td><td>${e.mq2}</td><td>${e.mq3}</td>
+      <td>${e.mq135}</td><td>${e.ti}</td>
+      <td><span class="badge ${bm[e.lv]}">${e.lv}</span></td>
+    </tr>`).join('');
+}
+
+// ── CHART ──
+function buildChart() {
+  const ctx = document.getElementById('chart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [
+        {label:'MQ-2 Smoke',   data:[], borderColor:'#FF6B00', backgroundColor:'rgba(255,107,0,0.05)', tension:0.4, pointRadius:2},
+        {label:'MQ-3 Alcohol', data:[], borderColor:'#ffd600', backgroundColor:'rgba(255,214,0,0.05)', tension:0.4, pointRadius:2},
+        {label:'MQ-135 AQ',    data:[], borderColor:'#ff2244', backgroundColor:'rgba(255,34,68,0.05)',  tension:0.4, pointRadius:2},
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {legend: {labels: {color:'#555', font:{family:'Share Tech Mono', size:11}}}},
+      scales: {
+        x: {ticks:{color:'#444',font:{size:10}}, grid:{color:'rgba(255,255,255,0.04)'}},
+        y: {ticks:{color:'#444',font:{size:10}}, grid:{color:'rgba(255,255,255,0.04)'}}
+      }
+    }
+  });
+}
+
+function addPoint(a, b, c) {
+  const t = new Date().toLocaleTimeString('en-IN', {hour12:false});
+  cL.push(t); cA.push(a); cB.push(b); cC.push(c);
+  if (cL.length > 20) { cL.shift(); cA.shift(); cB.shift(); cC.shift(); }
+  chart.data.labels        = cL;
+  chart.data.datasets[0].data = cA;
+  chart.data.datasets[1].data = cB;
+  chart.data.datasets[2].data = cC;
+  chart.update('none');
+}
+
+// ── BANNER ──
+let bTimer;
+function showBanner(msg) {
+  const b = document.getElementById('fAlert');
+  b.textContent = msg; b.style.display = 'block';
+  clearTimeout(bTimer);
+  bTimer = setTimeout(() => b.style.display='none', 4000);
+}
+
+// ── DEMO SIMULATION (used as fallback only) ──
+function sim(lv) {
+  const sc = [
+    {mq2:110, mq3:75,  mq135:140},
+    {mq2:370, mq3:250, mq135:340},
+    {mq2:570, mq3:410, mq135:550},
+    {mq2:810, mq3:670, mq135:780},
+  ];
+  render(sc[Math.min(lv, 3)]);
+}
+</script>
+</body>
+</html>
